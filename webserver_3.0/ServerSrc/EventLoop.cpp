@@ -8,9 +8,8 @@
 #include "Channel.h"
 
 EventLoop::EventLoop()
-:epoll_(new Epoll()),
-quit_(false){
-
+{
+    epoll_ = std::make_unique<Epoll>();
 }
 
 EventLoop::~EventLoop() {
@@ -18,11 +17,8 @@ EventLoop::~EventLoop() {
 }
 
 void EventLoop::loop() {
-    std::vector<Channel *> vec_channel;
-    while (!quit_) {
-        vec_channel.clear();
-        vec_channel = epoll_->poll();
-        for(auto& ch:vec_channel){
+    while (true) {
+        for(auto ch:epoll_->poll()){
             ch->handleEvent();
         }
         epoll_->handleExpiredChannel();
@@ -40,3 +36,6 @@ void EventLoop::updateEpoll(Channel* ch,int timeout) {          //使用这个�
 void EventLoop::removeFromEpoll(Channel *ch) {
     epoll_->epoll_del(ch);
 }
+
+
+

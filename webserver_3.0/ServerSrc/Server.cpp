@@ -4,42 +4,31 @@
 
 #include <iostream>
 #include <thread>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 #include "Server.h"
 #include "Util.h"
 #include "Channel.h"
 #include "EventLoop.h"
 #include "HttpConnect.h"
 #include "ThreadPool.h"
+#include "base/Logging.h"
 
 Server::Server(EventLoop *loop,int port)
 :mainReactor_(loop),
 port_(port){
     listenFd_ = socket_bind_listen(port);
+    errIf(listenFd_ == -1,"socket bind or listen error");
     setSocketNonBlocking(listenFd_);
     acceptChannel_ = std::make_unique<Channel>(mainReactor_,listenFd_);
-//    acceptChannel_->setEvents(EPOLLIN | EPOLLET);
     acceptChannel_->setReadFunc(std::bind(&Server::newConnection,this));
-//    mainReactor_->addToEpoll(acceptChannel_);
     acceptChannel_->enableEvent();
-
-    int size = std::thread::hardware_concurrency();
-//    thPool_ = new ThreadPool(size);
-    thPool_ = std::make_unique<ThreadPool>(size);
-    for(int i = 0;i < size;++i){
-//        subReactors_.push_back(new EventLoop());
-        std::unique_ptr<EventLoop> sub_reactor = std::make_unique<EventLoop>();
-        subReactors_.push_back(std::move(sub_reactor));
-    }
-
-    for(int i = 0;i < size;++i){
-        std::function<void()> sub_loop = std::bind(&EventLoop::loop,subReactors_[i].get());
-        thPool_->addTask(sub_loop);
-    }
 
 }
 
 Server::~Server() {
-//    delete acceptChannel_;
+
 }
 
 void Server::start() {
@@ -47,15 +36,21 @@ void Server::start() {
 }
 
 void Server::newConnection() {
+    LOG << "--------------------------------------------------------------------------------";
+    struct sockaddr_in client_addr;
+    memset(&client_addr, 0, sizeof(struct sockaddr_in));
+    socklen_t client_addr_len = sizeof(client_addr);
     int newConn = 0;
-    errIf(((newConn = socket_accept(listenFd_)) == -1), "accept error");
-    setSocketNonBlocking(newConn);
-    int random = newConn % subReactors_.size();
-    HttpConnect* newHttpConn = new HttpConnect(subReactors_[random].get(),newConn);
-    newHttpConn->getChannel()->setHolder(newHttpConn);
-    newHttpConn->setDeleteHttpConnFunc(std::bind(&Server::deleteConnection,this,std::placeholders::_1));
-    connections_[newConn] = newHttpConn;
-    newHttpConn->newEvent();
+    while ((newConn = accept(listenFd_, (struct sockaddr *)&client_addr,
+                             &client_addr_len)) > 0){
+
+        HttpConnect* newHttpConn = new HttpConnect(mainReactor_,newConn);
+        setSocketNonBlocking(newConn);
+        newHttpConn->setDeleteHttpConnFunc(std::bind(&Server::deleteConnection,this,std::placeholders::_1));
+        connections_[newConn] = newHttpConn;
+        newHttpConn->newEvent();
+    }
+
 }
 
 void Server::deleteConnection(int fd) {
@@ -69,5 +64,10 @@ void Server::deleteConnection(int fd) {
     }
 
 }
+
+
+
+
+
 
 

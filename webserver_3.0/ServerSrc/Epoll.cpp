@@ -11,8 +11,9 @@
 #include "base/Logging.h"
 //#include "Timer.h"
 
-const int EVENTSMAX = 1024;
+const int EVENTSMAX = 4096;
 const int EPOLLWAIT_TIME = 10000;
+//const int EPOLLWAIT_TIME = -1;
 
 Epoll::Epoll()
         : epollFd_(epoll_create1(0)),
@@ -35,15 +36,16 @@ void Epoll::epoll_add(Channel *channel,int timeout) {
         addTimer(channel,timeout);
     }
     struct epoll_event ev;
-    bzero(&ev, sizeof(ev));
+    memset(&ev,0,sizeof(ev));
     ev.data.ptr = channel;
     ev.events = channel->getEvents();
 
     if (!channel->getInEpoll()) {
         errIf(epoll_ctl(epollFd_, EPOLL_CTL_ADD, channel->getFd(), &ev) == -1, "epoll add channel error");
-    } else {
-        errIf(epoll_ctl(epollFd_, EPOLL_CTL_MOD, channel->getFd(), &ev) == -1, "epoll modify channel error");
     }
+//    else {
+//        errIf(epoll_ctl(epollFd_, EPOLL_CTL_MOD, channel->getFd(), &ev) == -1, "epoll modify channel error");
+//    }
     channel->setInEpoll();
 
 }

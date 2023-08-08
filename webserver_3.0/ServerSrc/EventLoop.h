@@ -6,6 +6,8 @@
 #define HTTPTEST_EVENTLOOP_H
 
 #include <memory>
+#include <vector>
+#include <functional>
 #include "Macros.h"
 
 class Epoll;
@@ -22,11 +24,13 @@ public:
     void updateEpoll(Channel* ch,int timeout = 0);
     void removeFromEpoll(Channel* ch);
 
+
+
 private:
-//    Epoll *epoll_;
     DISALLOW_COPY_AND_MOVE(EventLoop);
     std::unique_ptr<Epoll> epoll_;
-    bool quit_;
+    std::vector<std::function<void()>> pendingFunctors_;
+
 };
 
 

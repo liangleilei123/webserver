@@ -96,6 +96,7 @@ void Channel::handleEvent() {
     }
     if(readyEvents_ & EPOLLERR){
         //这里缺个错误处理
+//        handleError();
         events_ = 0;
         return;
     }
@@ -110,6 +111,7 @@ void Channel::handleEvent() {
 
 void Channel::enableEvent() {
     events_ |= EPOLLIN | EPOLLET;
+//    events_ |= EPOLLIN ;
    loop_->addToEpoll(this);
 }
 
@@ -119,4 +121,12 @@ void Channel::setHolder(HttpConnect* httpConnect) {
 
 HttpConnect *Channel::getHolder() {
     return holder_;
+}
+
+void Channel::setErrorFunc(const std::function<void()>& errorFunc) {
+    errorFunc_ = errorFunc;
+}
+
+void Channel::handleError() {
+    errorFunc_();
 }

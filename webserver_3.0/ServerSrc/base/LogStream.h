@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <string.h>
 #include <string>
+#include <iostream>
 #include "noncopyable.h"
 
 class AsyncLogging;
@@ -74,8 +75,11 @@ class LogStream : noncopyable {
   }
 
   LogStream& operator<<(const char* str) {
-    if (str)
-      buffer_.append(str, strlen(str));
+    if (str){
+        buffer_.append(str, strlen(str));
+//        std::cout<<*str;
+    }
+
     else
       buffer_.append("(null)", 6);
     return *this;
@@ -87,6 +91,7 @@ class LogStream : noncopyable {
 
   LogStream& operator<<(const std::string& v) {
     buffer_.append(v.c_str(), v.size());
+//    std::cout<<v;
     return *this;
   }
 

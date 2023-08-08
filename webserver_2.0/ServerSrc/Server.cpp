@@ -1,9 +1,11 @@
-//
+ //
 // Created by 梁磊磊 on 2023/8/1.
 //
 
 #include <iostream>
 #include <thread>
+#include <cstring>
+#include <netinet/in.h>
 #include "Server.h"
 #include "Util.h"
 #include "Channel.h"
@@ -21,16 +23,7 @@ port_(port){
     acceptChannel_->setReadFunc(std::bind(&Server::newConnection,this));
     mainReactor_->addToEpoll(acceptChannel_);
 
-    int size = std::thread::hardware_concurrency();
-    thPool_ = new ThreadPool(size);
-    for(int i = 0;i < size;++i){
-        subReactors_.push_back(new EventLoop());
-    }
 
-    for(int i = 0;i < size;++i){
-        std::function<void()> sub_loop = std::bind(&EventLoop::loop,subReactors_[i]);
-        thPool_->addTask(sub_loop);
-    }
 
 }
 
@@ -43,15 +36,20 @@ void Server::start() {
 }
 
 void Server::newConnection() {
+    struct sockaddr_in client_addr;
+    memset(&client_addr, 0, sizeof(struct sockaddr_in));
+    socklen_t client_addr_len = sizeof(client_addr);
     int newConn = 0;
-    errIf(((newConn = socket_accept(listenFd_)) == -1), "accept error");
-    setSocketNonBlocking(newConn);
-    int random = newConn % subReactors_.size();
-    HttpConnect* newHttpConn = new HttpConnect(subReactors_[random],newConn);
-    newHttpConn->getChannel()->setHolder(newHttpConn);
-    newHttpConn->setDeleteHttpConnFunc(std::bind(&Server::deleteConnection,this,std::placeholders::_1));
-    connections_[newConn] = newHttpConn;
-    newHttpConn->newEvent();
+    while ((newConn = accept(listenFd_,
+                             (struct sockaddr *)&client_addr,&client_addr_len)) > 0) {
+
+        int random = newConn % subReactors_.size();
+
+        HttpConnect *newHttpConn = new HttpConnect(mainReactor_, newConn);
+        setSocketNonBlocking(newConn);
+        connections_[newConn] = newHttpConn;
+        newHttpConn->newEvent();
+    }
 }
 
 void Server::deleteConnection(int fd) {

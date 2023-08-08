@@ -38,11 +38,13 @@ public:
     void handleConnecting();
 
     void handleEvent();
-
     void enableEvent();
 
     void setHolder(HttpConnect* httpConnect);
     HttpConnect* getHolder();
+
+    void setErrorFunc(const std::function<void()> &);
+    void handleError();
 
 
 private:
@@ -59,6 +61,7 @@ private:
     std::function<void()> readFunc_;
     std::function<void()> writeFunc_;
     std::function<void()> connectFunc_;
+    std::function<void()> errorFunc_;
 
 };
 

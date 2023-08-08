@@ -22,6 +22,7 @@ public:
     void start();
 
     void newConnection();
+    void handleThisConn();
     void deleteConnection(int fd);
 
 private:
@@ -38,7 +39,8 @@ private:
 
     std::unique_ptr<Channel> acceptChannel_;
 //    std::map<int,std::unique_ptr<HttpConnect>> connections_;
-    std::vector<std::unique_ptr<EventLoop>> subReactors_;
+//    std::vector<std::unique_ptr<EventLoop>> subReactors_;
+    std::vector<EventLoop*> subReactors_;
     std::unique_ptr<ThreadPool> thPool_;
 
 
